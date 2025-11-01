@@ -285,6 +285,41 @@ st.markdown("""
         pointer-events: none;
         z-index: 0;
     }
+
+    /* 전역 여백 개선 */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    
+    /* 섹션 간격 */
+    .stMarkdown {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* 버튼 그룹 간격 */
+    .stButton > button {
+        margin: 0.25rem 0;
+    }
+    
+    /* Expander 여백 */
+    .streamlit-expanderHeader {
+        font-size: 1rem;
+        font-weight: 500;
+    }
+    
+    /* 입력 필드 간격 */
+    .stTextInput, .stTextArea, .stSelectbox, .stSlider {
+        margin-bottom: 1rem;
+    }
+    
+    /* 깔끔한 구분선 */
+    hr {
+        margin: 1.5rem 0;
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -309,31 +344,56 @@ def render_advanced_options():
                 "📐 해상도",
                 ["1024x1024 (기본)", "2048x2048 (2K)", "4096x4096 (4K)"],
                 index=0,
-                help="높은 해상도는 더 선명하지만 생성 시간이 길어집니다"
+                help="해상도 선택"
             )
             
-            # 이미지 수
-            num_images = st.slider(
-                "🖼️ 생성 이미지 수",
-                min_value=1,
-                max_value=8,
-                value=1,
-                help="한 번에 여러 변형을 생성합니다 (Replicate만)"
-            )
+            # 이미지 수 (2x2 그리드)
+            st.markdown("🖼️ **생성 이미지 수**")
+            
+            # 세션 상태 초기화
+            if 'num_images_selected' not in st.session_state:
+                st.session_state.num_images_selected = 1
+            
+            grid_col1, grid_col2 = st.columns(2)
+            
+            with grid_col1:
+                if st.button("1장", key="img_1", use_container_width=True, 
+                           type="primary" if st.session_state.num_images_selected == 1 else "secondary"):
+                    st.session_state.num_images_selected = 1
+                    st.rerun()
+                
+                if st.button("3장", key="img_3", use_container_width=True,
+                           type="primary" if st.session_state.num_images_selected == 3 else "secondary"):
+                    st.session_state.num_images_selected = 3
+                    st.rerun()
+            
+            with grid_col2:
+                if st.button("2장", key="img_2", use_container_width=True,
+                           type="primary" if st.session_state.num_images_selected == 2 else "secondary"):
+                    st.session_state.num_images_selected = 2
+                    st.rerun()
+                
+                if st.button("4장", key="img_4", use_container_width=True,
+                           type="primary" if st.session_state.num_images_selected == 4 else "secondary"):
+                    st.session_state.num_images_selected = 4
+                    st.rerun()
+            
+            num_images = st.session_state.num_images_selected
+            st.markdown(f"<p style='text-align: center; color: #C9A962;'>선택됨: {num_images}장</p>", unsafe_allow_html=True)
             
             # 프롬프트 강도
             guidance_scale = st.slider(
-                "🎯 프롬프트 강도",
+                "프롬프트 강도",
                 min_value=1.0,
                 max_value=20.0,
                 value=7.5,
                 step=0.5,
-                help="높을수록 프롬프트에 더 충실합니다"
+                help="프롬프트 충실도"
             )
         
         with col2:
             # Seed 설정
-            use_random_seed = st.checkbox("🎲 랜덤 Seed", value=True)
+            use_random_seed = st.checkbox("랜덤 Seed", value=True)
             if use_random_seed:
                 seed = random.randint(0, 999999999)
                 st.text_input("Seed (자동 생성)", value=str(seed), disabled=True, key="seed_display")
@@ -343,25 +403,25 @@ def render_advanced_options():
                     min_value=0,
                     max_value=999999999,
                     value=12345,
-                    help="동일한 Seed는 유사한 결과를 생성합니다"
+                    help="재현성 확보"
                 )
             
             # 샘플링 단계
             steps = st.slider(
-                "🔄 샘플링 단계",
+                "샘플링 단계",
                 min_value=20,
                 max_value=100,
                 value=50,
                 step=5,
-                help="더 많은 단계는 품질을 향상시키지만 느립니다"
+                help="생성 품질"
             )
         
         # 네거티브 프롬프트
         negative_prompt = st.text_area(
-            "🚫 네거티브 프롬프트 (제외할 요소)",
+            "네거티브 프롬프트 (제외할 요소)",
             value="blurry, low quality, distorted, deformed, ugly, bad anatomy",
             height=80,
-            help="생성하지 않을 요소를 쉼표로 구분하여 입력하세요"
+            help="제외할 요소"
         )
     
     return {
@@ -376,8 +436,8 @@ def render_advanced_options():
 
 def render_face_refinement():
     """얼굴 세부 조정 UI"""
-    with st.expander("👤 얼굴 세부 조정", expanded=False):
-        st.caption("슬라이더로 얼굴 특징을 미세 조정합니다")
+    with st.expander("얼굴 조정", expanded=False):
+        st.markdown("슬라이더로 얼굴 특징을 미세 조정합니다")
         
         col1, col2, col3 = st.columns(3)
         
@@ -400,7 +460,7 @@ def render_face_refinement():
         
         col4, col5 = st.columns(2)
         with col4:
-            skin_smoothness = st.slider("✨ 피부 매끄러움", 0, 100, 50, key="skin")
+            skin_smoothness = st.slider("피부 매끄러움", 0, 100, 50, key="skin")
         with col5:
             brightness = st.slider("💡 밝기", -100, 100, 0, key="bright")
     
@@ -623,172 +683,176 @@ def render_preset_manager():
 
 
 def render_beauty_retouch():
-    """뷰티 보정 UI (Refine AI 스타일)"""
-    with st.expander("💄 뷰티 보정 (Beauty Retouch)", expanded=False):
-        st.caption("메이크업 및 피부 보정 스타일을 선택하세요")
-        
-        # 프리셋 매니저 추가
+    """뷰티 보정 UI (Refine AI 스타일 - 좌우 2열 레이아웃)"""
+    with st.expander("💄 뷰티 보정", expanded=False):
+        # 프리셋 매니저
         render_preset_manager()
         
         st.markdown("---")
         
-        # AI 자동 최적화 추가
-        st.markdown("✨ **AI 자동 최적화**")
-        st.caption("얼굴 사진을 업로드하면 AI가 최적의 보정값을 추천합니다")
+        # 메인 레이아웃: 왼쪽 컨트롤, 오른쪽 정보/미리보기
+        left_col, right_col = st.columns([2, 1])
         
-        optimize_col1, optimize_col2 = st.columns([3, 1])
-        
-        with optimize_col1:
-            face_image_for_analysis = st.file_uploader(
-                "분석할 얼굴 사진 업로드",
-                type=['png', 'jpg', 'jpeg'],
-                key="face_analysis_upload",
-                help="현재 모델 사진 또는 참조 사진을 업로드하세요"
-            )
-        
-        with optimize_col2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            analyze_button = st.button("🤖 분석", use_container_width=True, disabled=not face_image_for_analysis)
-        
-        if analyze_button and face_image_for_analysis:
-            with st.spinner("🔍 AI가 얼굴을 분석 중..."):
-                from PIL import Image
-                image = Image.open(face_image_for_analysis)
-                
-                recommendations = analyze_face_for_optimization(image)
-                
-                if recommendations:
-                    st.success("✅ 분석 완료! 추천 설정을 적용합니다.")
-                    
-                    # 추천 이유 표시
-                    if 'reasoning' in recommendations:
-                        st.info(f"💡 **AI 분석**: {recommendations['reasoning']}")
-                    
-                    # 추천값을 session_state에 저장
-                    st.session_state.makeup_type = recommendations.get('makeup_type', 'natural')
-                    st.session_state.beauty_whitening = recommendations.get('whitening', 30)
-                    st.session_state.beauty_skin_texture = recommendations.get('skin_texture', 60)
-                    st.session_state.beauty_glow_effect = recommendations.get('glow_effect', 40)
-                    st.session_state.beauty_makeup_intensity = recommendations.get('makeup_intensity', 50)
-                    st.session_state.beauty_retouch_areas = recommendations.get('retouch_areas', ["전체 얼굴", "피부톤"])
-                    st.session_state.beauty_remove_blemish = recommendations.get('remove_blemish', True)
-                    st.session_state.beauty_enhance_eyes = recommendations.get('enhance_eyes', False)
-                    st.session_state.beauty_plump_lips = recommendations.get('plump_lips', False)
-                    
-                    st.rerun()
-                else:
-                    st.warning("⚠️ 분석에 실패했습니다. 기본 설정을 사용하세요.")
-        
-        st.markdown("---")
-        
-        # 메이크업 타입 선택
-        st.markdown("### 🎨 메이크업 타입")
-        makeup_cols = st.columns(3)
-        
-        with makeup_cols[0]:
-            natural_retouch = st.button("보정 메이크업", key="natural_makeup", use_container_width=True)
-        with makeup_cols[1]:
-            full_makeup = st.button("풀 메이크업", key="full_makeup", use_container_width=True)
-        with makeup_cols[2]:
-            dewy_skin = st.button("물광 피부", key="dewy_skin", use_container_width=True)
-        
-        # 선택된 메이크업 타입 저장
-        if 'makeup_type' not in st.session_state:
-            st.session_state.makeup_type = "natural"
-        
-        if natural_retouch:
-            st.session_state.makeup_type = "natural"
-        elif full_makeup:
-            st.session_state.makeup_type = "full"
-        elif dewy_skin:
-            st.session_state.makeup_type = "dewy"
-        
-        # 현재 선택된 타입 표시
-        makeup_type_names = {
-            "natural": "보정 메이크업",
-            "full": "풀 메이크업",
-            "dewy": "물광 피부"
-        }
-        st.info(f"✓ 선택됨: **{makeup_type_names[st.session_state.makeup_type]}**")
-        
-        st.markdown("---")
-        
-        # 피부 보정 강도
-        st.markdown("### 💎 피부 보정 강도")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # 흰 피부 (화이트닝)
+        with left_col:
+            # 메이크업 타입 선택
+            st.markdown("#### 메이크업 타입")
+            makeup_cols = st.columns(3)
+            
+            with makeup_cols[0]:
+                natural_retouch = st.button("보정 메이크업", key="natural_makeup", use_container_width=True)
+            with makeup_cols[1]:
+                full_makeup = st.button("풀 메이크업", key="full_makeup", use_container_width=True)
+            with makeup_cols[2]:
+                dewy_skin = st.button("물광 피부", key="dewy_skin", use_container_width=True)
+            
+            # 선택된 메이크업 타입 저장
+            if 'makeup_type' not in st.session_state:
+                st.session_state.makeup_type = "natural"
+            
+            if natural_retouch:
+                st.session_state.makeup_type = "natural"
+            elif full_makeup:
+                st.session_state.makeup_type = "full"
+            elif dewy_skin:
+                st.session_state.makeup_type = "dewy"
+            
+            # 현재 선택된 타입 표시
+            makeup_type_names = {
+                "natural": "보정 메이크업",
+                "full": "풀 메이크업",
+                "dewy": "물광 피부"
+            }
+            st.info(f"{makeup_type_names[st.session_state.makeup_type]}")
+            
+            st.markdown("---")
+            
+            # 피부 보정 슬라이더
+            st.markdown("#### 피부 보정")
+            
+            # 화이트닝
             whitening = st.slider(
-                "🤍 피부 화이트닝",
+                "피부 화이트닝",
                 0, 100, 
                 st.session_state.get('beauty_whitening', 30),
-                help="피부를 밝고 하얗게 보정합니다",
+                help="피부 밝기",
                 key="slider_whitening"
             )
             
-            # 피부 결
+            # 피부 매끄러움
             skin_texture = st.slider(
-                "✨ 피부 매끄러움",
+                "피부 매끄러움",
                 0, 100, 
                 st.session_state.get('beauty_skin_texture', 60),
-                help="피부 결을 매끄럽게 보정합니다",
+                help="피부 질감",
                 key="slider_skin_texture"
             )
-        
-        with col2:
+            
             # 물광 효과
             glow_effect = st.slider(
-                "💧 물광 효과",
+                "물광 효과",
                 0, 100, 
                 st.session_state.get('beauty_glow_effect', 40),
-                help="피부에 촉촉한 광택을 더합니다",
+                help="광택 효과",
                 key="slider_glow_effect"
             )
             
             # 화장 농도
             makeup_intensity = st.slider(
-                "💄 화장 농도",
+                "화장 농도",
                 0, 100, 
                 st.session_state.get('beauty_makeup_intensity', 50),
-                help="메이크업의 진하기를 조절합니다",
+                help="메이크업 강도",
                 key="slider_makeup_intensity"
             )
+            
+            st.markdown("---")
+            
+            # 보정 부위 선택
+            st.markdown("#### 보정 부위")
+            
+            retouch_areas = st.multiselect(
+                "보정할 영역을 선택하세요",
+                [
+                    "전체 얼굴",
+                    "피부톤",
+                    "눈 화장",
+                    "입술 화장",
+                    "볼 홍조",
+                    "하이라이트",
+                    "음영/쉐딩"
+                ],
+                default=st.session_state.get('beauty_retouch_areas', ["전체 얼굴", "피부톤"]),
+                key="multiselect_retouch_areas"
+            )
+            
+            st.markdown("---")
+            
+            # 추가 옵션
+            st.markdown("#### 추가 옵션")
+            
+            option_col1, option_col2 = st.columns(2)
+            
+            with option_col1:
+                remove_blemish = st.checkbox("잡티 제거", value=st.session_state.get('beauty_remove_blemish', True), key="cb_remove_blemish")
+                natural_look = st.checkbox("자연스러운 느낌 유지", value=st.session_state.get('beauty_natural_look', True), key="cb_natural_look")
+            
+            with option_col2:
+                enhance_eyes = st.checkbox("눈매 강조", value=st.session_state.get('beauty_enhance_eyes', False), key="cb_enhance_eyes")
+                plump_lips = st.checkbox("입술 볼륨감", value=st.session_state.get('beauty_plump_lips', False), key="cb_plump_lips")
         
-        st.markdown("---")
-        
-        # 보정 부위 선택
-        st.markdown("### 🎯 보정 부위 선택")
-        
-        retouch_areas = st.multiselect(
-            "보정할 영역을 선택하세요 (복수 선택 가능)",
-            [
-                "전체 얼굴",
-                "피부톤",
-                "눈 화장",
-                "입술 화장",
-                "볼 홍조",
-                "하이라이트",
-                "음영/쉐딩"
-            ],
-            default=st.session_state.get('beauty_retouch_areas', ["전체 얼굴", "피부톤"]),
-            key="multiselect_retouch_areas"
-        )
-        
-        # 추가 옵션
-        st.markdown("---")
-        st.markdown("### ⚙️ 추가 옵션")
-        
-        col3, col4 = st.columns(2)
-        
-        with col3:
-            remove_blemish = st.checkbox("잡티 제거", value=st.session_state.get('beauty_remove_blemish', True), key="cb_remove_blemish")
-            natural_look = st.checkbox("자연스러운 느낌 유지", value=st.session_state.get('beauty_natural_look', True), key="cb_natural_look")
-        
-        with col4:
-            enhance_eyes = st.checkbox("눈매 강조", value=st.session_state.get('beauty_enhance_eyes', False), key="cb_enhance_eyes")
-            plump_lips = st.checkbox("입술 볼륨감", value=st.session_state.get('beauty_plump_lips', False), key="cb_plump_lips")
+        with right_col:
+            # AI 자동 최적화
+            st.markdown("#### ✨ AI 자동 최적화")
+            st.markdown("사진을 업로드하면 AI가 최적값을 추천합니다")
+            
+            face_image_for_analysis = st.file_uploader(
+                "얼굴 사진 업로드",
+                type=['png', 'jpg', 'jpeg'],
+                key="face_analysis_upload",
+                help="분석할 사진 업로드",
+                label_visibility="collapsed"
+            )
+            
+            analyze_button = st.button("AI 분석", use_container_width=True, disabled=not face_image_for_analysis)
+            
+            if analyze_button and face_image_for_analysis:
+                with st.spinner("🔍 AI가 얼굴을 분석 중..."):
+                    from PIL import Image
+                    image = Image.open(face_image_for_analysis)
+                    
+                    recommendations = analyze_face_for_optimization(image)
+                    
+                    if recommendations:
+                        st.success("분석 완료")
+                        
+                        # 추천 이유 표시
+                        if 'reasoning' in recommendations:
+                            st.info(f"💡 {recommendations['reasoning']}")
+                        
+                        # 추천값을 session_state에 저장
+                        st.session_state.makeup_type = recommendations.get('makeup_type', 'natural')
+                        st.session_state.beauty_whitening = recommendations.get('whitening', 30)
+                        st.session_state.beauty_skin_texture = recommendations.get('skin_texture', 60)
+                        st.session_state.beauty_glow_effect = recommendations.get('glow_effect', 40)
+                        st.session_state.beauty_makeup_intensity = recommendations.get('makeup_intensity', 50)
+                        st.session_state.beauty_retouch_areas = recommendations.get('retouch_areas', ["전체 얼굴", "피부톤"])
+                        st.session_state.beauty_remove_blemish = recommendations.get('remove_blemish', True)
+                        st.session_state.beauty_enhance_eyes = recommendations.get('enhance_eyes', False)
+                        st.session_state.beauty_plump_lips = recommendations.get('plump_lips', False)
+                        
+                        st.rerun()
+                    else:
+                        st.warning("분석 실패")
+            
+            st.markdown("---")
+            
+            # 현재 설정 요약
+            st.markdown("#### 📋 현재 설정")
+            st.markdown(f"**메이크업**: {makeup_type_names[st.session_state.makeup_type]}")
+            st.markdown(f"**화이트닝**: {whitening}")
+            st.markdown(f"**매끄러움**: {skin_texture}")
+            st.markdown(f"**물광**: {glow_effect}")
+            st.markdown(f"**화장 농도**: {makeup_intensity}")
     
     return {
         "makeup_type": st.session_state.makeup_type,
@@ -920,7 +984,7 @@ def beauty_options_to_prompt(beauty_options):
 
 def render_lighting_options():
     """조명 설정 UI"""
-    with st.expander("💡 조명 설정", expanded=False):
+    with st.expander("조명 설정", expanded=False):
         col1, col2 = st.columns(2)
         
         with col1:
@@ -940,7 +1004,7 @@ def render_lighting_options():
             lighting_intensity = st.slider(
                 "조명 강도",
                 0, 100, 70,
-                help="조명의 밝기를 조절합니다"
+                help="밝기"
             )
         
         with col2:
@@ -1140,7 +1204,7 @@ def show_detailed_prompt_preview(base_prompt, advanced_opts, face_opts, lighting
         st.markdown("### 1️⃣ 기본 프롬프트 (Base Prompt)")
         if custom_prompt.strip():
             st.code(custom_prompt.strip(), language="text")
-            st.caption("⚠️ 커스텀 프롬프트가 설정되어 기본 옵션들은 무시됩니다.")
+            st.markdown("⚠️ 커스텀 프롬프트가 설정되어 기본 옵션들은 무시됩니다.")
         else:
             st.code(base_prompt, language="text")
         
@@ -1164,7 +1228,7 @@ def show_detailed_prompt_preview(base_prompt, advanced_opts, face_opts, lighting
                         st.write(f"• **화장 농도**: {beauty_opts.get('makeup_intensity', 0)}")
                         st.write(f"• **보정 부위**: {', '.join(beauty_opts.get('retouch_areas', []))}")
             else:
-                st.caption("⚠️ 뷰티 보정 옵션이 설정되지 않았습니다.")
+                st.markdown("⚠️ 뷰티 보정 옵션이 설정되지 않았습니다.")
         
         # 3. 얼굴 조정 프롬프트
         st.markdown("---")
@@ -1181,7 +1245,7 @@ def show_detailed_prompt_preview(base_prompt, advanced_opts, face_opts, lighting
                     st.write(f"• **코 크기**: {face_opts.get('nose_size', 50)}")
                     st.write(f"• **입술 크기**: {face_opts.get('lip_size', 50)}")
         else:
-            st.caption("⚠️ 얼굴 조정 옵션이 설정되지 않았습니다.")
+            st.markdown("⚠️ 얼굴 조정 옵션이 설정되지 않았습니다.")
         
         # 4. 조명 설정 프롬프트
         st.markdown("---")
@@ -1225,7 +1289,7 @@ def show_detailed_prompt_preview(base_prompt, advanced_opts, face_opts, lighting
         # 네거티브 프롬프트
         if advanced_opts.get('negative_prompt'):
             st.markdown("---")
-            st.markdown("### 🚫 네거티브 프롬프트")
+            st.markdown("### 네거티브 프롬프트")
             st.code(advanced_opts['negative_prompt'], language="text")
         
         # 프롬프트 길이 정보
@@ -1273,7 +1337,7 @@ def verify_replicate_api_key(api_key):
 
 # 로그인 페이지
 def login_page():
-    st.markdown('<div class="main-header"><h1>💇 헤어스타일 모델 생성기 v3</h1><p>AI 제공자를 선택하고 로그인하세요</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>헤어스타일 모델 생성기</h1><p>AI 제공자를 선택하고 로그인하세요</p></div>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -1303,17 +1367,17 @@ def login_page():
             
             if st.button("🔐 Google로 로그인", use_container_width=True):
                 if not api_key:
-                    st.error("❌ API 키를 입력해주세요")
+                    st.error("API 키를 입력해주세요")
                 else:
                     with st.spinner("API 키 검증 중..."):
                         if verify_google_api_key(api_key):
                             st.session_state.api_key = api_key
                             st.session_state.api_provider = "google"
                             st.session_state.logged_in = True
-                            st.success("✅ Google AI Studio 로그인 성공!")
+                            st.success("Google AI Studio 로그인 성공!")
                             st.rerun()
                         else:
-                            st.error("❌ 유효하지 않은 API 키입니다")
+                            st.error("유효하지 않은 API 키입니다")
         
         # Replicate
         else:
@@ -1328,17 +1392,17 @@ def login_page():
             
             if st.button("🔐 Replicate로 로그인", use_container_width=True):
                 if not api_key:
-                    st.error("❌ API 토큰을 입력해주세요")
+                    st.error("API 토큰을 입력해주세요")
                 else:
                     with st.spinner("API 토큰 검증 중..."):
                         if verify_replicate_api_key(api_key):
                             st.session_state.api_key = api_key
                             st.session_state.api_provider = "replicate"
                             st.session_state.logged_in = True
-                            st.success("✅ Replicate 로그인 성공!")
+                            st.success("Replicate 로그인 성공!")
                             st.rerun()
                         else:
-                            st.error("❌ 유효하지 않은 API 토큰입니다")
+                            st.error("유효하지 않은 API 토큰입니다")
         
         st.markdown("---")
         
@@ -1351,11 +1415,11 @@ def login_page():
 
 # Google 메인 선택 화면 (5개 옵션)
 def google_main_selection():
-    st.markdown('<div class="main-header"><h1>💇 헤어스타일 모델 생성기 v3</h1><span class="provider-badge badge-google">Google Gemini</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>헤어스타일 모델 생성기</h1><span class="provider-badge badge-google">Google Gemini</span></div>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([4, 1, 1])
     with col3:
-        if st.button("🚪 로그아웃"):
+        if st.button("로그아웃"):
             st.session_state.logged_in = False
             st.session_state.api_key = None
             st.session_state.api_provider = None
@@ -1367,35 +1431,35 @@ def google_main_selection():
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("1️⃣ 이미지 생성\n\n처음부터 새로운 헤어스타일 모델 생성", key="gen_google", use_container_width=True):
+        if st.button("이미지 생성", key="gen_google", use_container_width=True):
             st.session_state.selected_mode = "generation"
             st.rerun()
         
-        if st.button("2️⃣ 의상 변경\n\n헤어스타일 고정, 의상만 변경", key="outfit_google", use_container_width=True):
+        if st.button("의상 변경", key="outfit_google", use_container_width=True):
             st.session_state.selected_mode = "outfit"
             st.rerun()
         
-        if st.button("3️⃣ 얼굴 변경\n\n헤어스타일 고정, 얼굴만 변경", key="face_google", use_container_width=True):
+        if st.button("얼굴 변경", key="face_google", use_container_width=True):
             st.session_state.selected_mode = "face"
             st.rerun()
     
     with col2:
-        if st.button("4️⃣ 배경 변경\n\n인물 고정, 배경만 변경", key="bg_google", use_container_width=True):
+        if st.button("배경 변경", key="bg_google", use_container_width=True):
             st.session_state.selected_mode = "background"
             st.rerun()
         
-        if st.button("5️⃣ 헤어 컬러 변경\n\n헤어 스타일 유지, 컬러만 변경", key="color_google", use_container_width=True):
+        if st.button("헤어 컬러 변경", key="color_google", use_container_width=True):
             st.session_state.selected_mode = "color"
             st.rerun()
 
 
 # Replicate 메인 선택 화면 (3개 옵션)
 def replicate_main_selection():
-    st.markdown('<div class="main-header"><h1>💇 헤어스타일 모델 생성기 v3</h1><span class="provider-badge badge-replicate">Replicate Seedream</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>헤어스타일 모델 생성기</h1><span class="provider-badge badge-replicate">Replicate Seedream</span></div>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([4, 1, 1])
     with col3:
-        if st.button("🚪 로그아웃"):
+        if st.button("로그아웃"):
             st.session_state.logged_in = False
             st.session_state.api_key = None
             st.session_state.api_provider = None
@@ -1407,26 +1471,26 @@ def replicate_main_selection():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("1️⃣ 이미지 생성\n\n텍스트로 새로운 이미지 생성\n(Text-to-Image)", key="gen_replicate", use_container_width=True):
+        if st.button("이미지 생성", key="gen_replicate", use_container_width=True):
             st.session_state.selected_mode = "generation"
             st.rerun()
     
     with col2:
-        if st.button("2️⃣ 이미지 편집\n\n기존 이미지 수정\n(Image-to-Image)", key="edit_replicate", use_container_width=True):
+        if st.button("이미지 편집", key="edit_replicate", use_container_width=True):
             st.session_state.selected_mode = "edit_menu"
             st.rerun()
     
     with col3:
-        if st.button("3️⃣ 업스케일링\n\n이미지 해상도 향상\n(4K Upscaling)", key="upscale_replicate", use_container_width=True):
+        if st.button("업스케일링", key="upscale_replicate", use_container_width=True):
             st.session_state.selected_mode = "upscale"
             st.rerun()
 
 
 # Replicate 이미지 편집 서브메뉴
 def replicate_edit_submenu():
-    st.markdown('<div class="main-header"><h1>2️⃣ 이미지 편집</h1><span class="provider-badge badge-replicate">Replicate Seedream</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>이미지 편집</h1><span class="provider-badge badge-replicate">Replicate Seedream</span></div>', unsafe_allow_html=True)
     
-    if st.button("⬅️ 메인으로 돌아가기"):
+    if st.button("← 돌아가기"):
         st.session_state.selected_mode = None
         st.rerun()
     
@@ -1436,27 +1500,27 @@ def replicate_edit_submenu():
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("👤 얼굴 변경\n\n헤어스타일 고정, 얼굴만 변경", key="face_replicate", use_container_width=True):
+        if st.button("얼굴 변경", key="face_replicate", use_container_width=True):
             st.session_state.selected_mode = "face"
             st.rerun()
         
-        if st.button("🏞️ 배경 변경\n\n인물 고정, 배경만 변경", key="bg_replicate", use_container_width=True):
+        if st.button("배경 변경", key="bg_replicate", use_container_width=True):
             st.session_state.selected_mode = "background"
             st.rerun()
     
     with col2:
-        if st.button("👔 의상 변경\n\n헤어스타일 고정, 의상만 변경", key="outfit_replicate", use_container_width=True):
+        if st.button("의상 변경", key="outfit_replicate", use_container_width=True):
             st.session_state.selected_mode = "outfit"
             st.rerun()
         
-        if st.button("🎨 헤어 컬러 변경\n\n헤어 스타일 유지, 컬러만 변경", key="color_replicate", use_container_width=True):
+        if st.button("헤어 컬러 변경", key="color_replicate", use_container_width=True):
             st.session_state.selected_mode = "color"
             st.rerun()
 
 
 # 이미지 생성 페이지 (Google) - 참조 이미지 + 커스텀 프롬프트 추가
 def generation_page_google():
-    st.markdown('<div class="main-header"><h1>1️⃣ 이미지 생성</h1><span class="provider-badge badge-google">Google Gemini</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>이미지 생성</h1><span class="provider-badge badge-google">Google Gemini</span></div>', unsafe_allow_html=True)
     
     if st.button("⬅️ 뒤로 가기"):
         st.session_state.selected_mode = None
@@ -1517,7 +1581,7 @@ def generation_page_google():
         # 참조 이미지 업로드 추가
         st.markdown("---")
         st.markdown("### 🖼️ 참조 이미지 (선택사항)")
-        st.caption("💡 스타일 참조용 이미지를 업로드하면 더 정확한 결과를 얻을 수 있습니다 (최대 3개)")
+        st.markdown("💡 스타일 참조용 이미지를 업로드하면 더 정확한 결과를 얻을 수 있습니다 (최대 3개)")
         
         ref_image1 = st.file_uploader("참조 이미지 1", type=['png', 'jpg', 'jpeg'], key="ref1_gen")
         ref_image2 = st.file_uploader("참조 이미지 2", type=['png', 'jpg', 'jpeg'], key="ref2_gen")
@@ -1554,7 +1618,7 @@ def generation_page_google():
     with col2:
         st.markdown("### 🎨 생성 결과")
         
-        if st.button("🎨 이미지 생성하기", use_container_width=True, type="primary"):
+        if st.button("이미지 생성", use_container_width=True):
             with st.spinner("이미지 생성 중... 약 30초 소요됩니다"):
                 try:
                     # 프롬프트 생성
@@ -1646,7 +1710,7 @@ The final image should showcase the hairstyle clearly with professional salon-qu
                                 use_container_width=True
                             )
                             
-                            st.success("✅ 이미지 생성 완료!")
+                            st.success("이미지 생성 완료!")
                 
                 except Exception as e:
                     st.error(f"❌ 오류 발생: {str(e)}")
@@ -1654,7 +1718,7 @@ The final image should showcase the hairstyle clearly with professional salon-qu
 
 # 이미지 생성 페이지 (Replicate) - 참조 이미지 + 커스텀 프롬프트 추가
 def generation_page_replicate():
-    st.markdown('<div class="main-header"><h1>1️⃣ 이미지 생성</h1><span class="provider-badge badge-replicate">Replicate Seedream</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>이미지 생성</h1><span class="provider-badge badge-replicate">Replicate Seedream</span></div>', unsafe_allow_html=True)
     
     if st.button("⬅️ 뒤로 가기"):
         st.session_state.selected_mode = None
@@ -1715,7 +1779,7 @@ def generation_page_replicate():
         # 참조 이미지 업로드 추가
         st.markdown("---")
         st.markdown("### 🖼️ 참조 이미지 (선택사항)")
-        st.caption("💡 스타일 참조용 이미지를 업로드하면 Image-to-Image 모드로 작동합니다")
+        st.markdown("💡 스타일 참조용 이미지를 업로드하면 Image-to-Image 모드로 작동합니다")
         
         ref_image = st.file_uploader("참조 이미지", type=['png', 'jpg', 'jpeg'], key="ref_replicate_gen")
         
@@ -1744,7 +1808,7 @@ def generation_page_replicate():
         
         num_images = advanced_opts['num_images']
         
-        if st.button("🎨 이미지 생성하기", use_container_width=True, type="primary"):
+        if st.button("이미지 생성", use_container_width=True):
             with st.spinner(f"이미지 생성 중... {num_images}개 생성 예상 시간: 약 {num_images * 10}초"):
                 try:
                     # 프롬프트 생성
@@ -1843,7 +1907,7 @@ The final image should showcase the hairstyle clearly with professional salon-qu
 
 # 업스케일링 페이지 (Replicate 전용) - 커스텀 프롬프트 추가
 def upscale_page_replicate():
-    st.markdown('<div class="main-header"><h1>3️⃣ 업스케일링</h1><span class="provider-badge badge-replicate">Replicate Seedream</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><h1>업스케일링</h1><span class="provider-badge badge-replicate">Replicate Seedream</span></div>', unsafe_allow_html=True)
     
     if st.button("⬅️ 뒤로 가기"):
         st.session_state.selected_mode = None
@@ -1881,9 +1945,9 @@ def upscale_page_replicate():
     with col2:
         st.markdown("### 🎨 업스케일 결과")
         
-        if st.button("✨ 업스케일링 시작", use_container_width=True, type="primary"):
+        if st.button("✨ 업스케일링 시작", use_container_width=True):
             if not input_image:
-                st.error("❌ 이미지를 업로드해주세요!")
+                st.error("이미지를 업로드해주세요!")
             else:
                 with st.spinner("업스케일 중... 약 20-30초 소요됩니다"):
                     try:
@@ -1926,7 +1990,7 @@ def upscale_page_replicate():
                             st.image(url, use_container_width=True)
                             st.markdown(f"[💾 업스케일 이미지 다운로드]({url})")
                         
-                        st.success("✅ 업스케일 완료!")
+                        st.success("업스케일 완료!")
                     
                     except Exception as e:
                         st.error(f"❌ 오류 발생: {str(e)}")
@@ -1971,7 +2035,7 @@ def edit_page(mode):
         main_image = st.file_uploader("메인 이미지 (헤어스타일 유지)", type=['png', 'jpg', 'jpeg'], key=f"main_{mode}")
         
         st.markdown("**샘플 이미지 (1-3개)**")
-        st.caption("💡 팁: 샘플 이미지를 2-3개 업로드하면 더 정확한 결과를 얻을 수 있습니다!")
+        st.markdown("💡 팁: 샘플 이미지를 2-3개 업로드하면 더 정확한 결과를 얻을 수 있습니다!")
         
         sample1 = st.file_uploader("샘플 1 (필수)", type=['png', 'jpg', 'jpeg'], key=f"sample1_{mode}")
         sample2 = st.file_uploader("샘플 2 (선택)", type=['png', 'jpg', 'jpeg'], key=f"sample2_{mode}")
@@ -2011,9 +2075,9 @@ def edit_page(mode):
     with col2:
         st.markdown("### 🎨 변경 결과")
         
-        if st.button(f"✨ {mode_names[mode]}하기", use_container_width=True, type="primary"):
+        if st.button(f"✨ {mode_names[mode]}하기", use_container_width=True):
             if not main_image or not sample1:
-                st.error("❌ 메인 이미지와 샘플 1은 필수입니다!")
+                st.error("메인 이미지와 샘플 1은 필수입니다!")
             else:
                 with st.spinner("이미지 변경 중... 약 30-60초 소요됩니다"):
                     try:
